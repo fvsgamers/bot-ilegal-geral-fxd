@@ -105,14 +105,24 @@ module.exports = (client) => {
             .addOptions(options)
         );
 
-        const cargosOptions = Object.entries(config.cargosSistema)
-          .map(([id, data]) => {
+        // 🔥 AGORA USA FAMÍLIAS + LIDERANÇA
+        const cargosOptions = [
+          ...Object.entries(config.familias).map(([id, data]) => {
             const role = interaction.guild.roles.cache.get(id);
             return {
               label: role ? role.name : data.nome,
               value: id
             };
-          });
+          }),
+
+          ...config.lideranca.map(id => {
+            const role = interaction.guild.roles.cache.get(id);
+            return {
+              label: role ? role.name : 'Liderança',
+              value: id
+            };
+          })
+        ];
 
         const selectCargo = new ActionRowBuilder().addComponents(
           new StringSelectMenuBuilder()
@@ -163,16 +173,13 @@ module.exports = (client) => {
             ]
           });
 
-          const role = interaction.guild.roles.cache.get(dados.cargo);
-
           const embed = new EmbedBuilder()
             .setTitle('📋 Novo Registro')
             .addFields(
               { name: 'Nome', value: dados.nome },
               { name: 'Vulgo', value: dados.vulgo },
               { name: 'ID', value: dados.id },
-              { name: 'Telefone', value: dados.telefone },
-              { name: 'Cargo', value: role ? role.name : dados.cargo }
+              { name: 'Telefone', value: dados.telefone }
             );
 
           const botoes = new ActionRowBuilder().addComponents(
@@ -220,37 +227,76 @@ module.exports = (client) => {
         const nome = getField('Nome');
         const telefone = getField('Telefone');
 
-        const sistema = config.cargosSistema[cargoEscolhido];
-        if (!sistema) return console.log('⚠️ Cargo não configurado');
+        let cargosAdicionar = [];
+        let nomeCargo = 'Membro';
 
-        let nickname = `[${sistema.nome}] ${id} | ${vulgo}`;
-        if (nickname.length > 32) nickname = `[${sistema.nome}] ${vulgo}`.slice(0, 32);
+        // ===== FAMÍLIAS =====
+        if (config.familias[cargoEscolhido]) {
+          const familia = config.familias[cargoEscolhido];
+
+          nomeCargo = familia.nome;
+
+          cargosAdicionar = [
+            cargoEscolhido,
+            familia.base
+          ];
+        }
+
+        // ===== LIDERANÇA =====
+        else if (config.lideranca.includes(cargoEscolhido)) {
+
+          nomeCargo = 'Alta Cúpula';
+
+          cargosAdicionar = [
+            cargoEscolhido,
+            config.padrao.lideranca.base,
+            ...config.padrao.lideranca.extra
+          ];
+        }
+
+        else {
+          console.log('⚠️ Cargo não configurado:', cargoEscolhido);
+          return;
+        }
+
+        // 🔥 REMOVE FAMÍLIA ANTIGA
+        const todasFamilias = Object.keys(config.familias);
+
+        const remover = membro.roles.cache
+          .filter(role => todasFamilias.includes(role.id))
+          .map(role => role.id);
+
+        if (remover.length > 0) {
+          await membro.roles.remove(remover);
+        }
+
+        // 🔥 ADD CARGOS
+        const faltando = cargosAdicionar.filter(c =>
+          !membro.roles.cache.has(c)
+        );
+
+        if (faltando.length > 0) {
+          await membro.roles.add(faltando);
+        }
+
+        // ===== APELIDO =====
+        let nickname = `[${nomeCargo}] ${id} | ${vulgo}`;
+        if (nickname.length > 32) nickname = `[${nomeCargo}] ${vulgo}`.slice(0, 32);
 
         await membro.setNickname(nickname).catch(() => {});
 
-        const cargos = [
-          cargoEscolhido,
-          config.cargoAprovado,
-          ...(sistema.extra || [])
-        ];
-
-        await membro.roles.add(cargos);
         await membro.roles.remove(config.cargoRemover);
 
-        // ===== REGISTRO CENTRAL =====
+        // ===== LOG CENTRAL =====
         const canalRegistro = interaction.guild.channels.cache.get('1485727631067451634');
 
         if (canalRegistro) {
-          const linha = `| ----------------------------------------------------------------|`;
-
-          const mensagem = `\n📜 **Batizado**\n\n👤 **Nome:** ${nome}\n🕶️ **Vulgo:** ${vulgo}\n🆔 **ID:** ${id}\n📞 **Telefone:** ${telefone}\n🏷️ **Cargo:** ${sistema.nome}\n🧑‍💼 **Aprovado por:** ${interaction.user.tag}\n\n${linha}\n`;
-
-          canalRegistro.send(mensagem);
+          canalRegistro.send(`📜 **Batizado**\n\n👤 ${nome}\n🕶️ ${vulgo}\n🆔 ${id}\n📞 ${telefone}\n🏷️ ${nomeCargo}\n🧑‍💼 ${interaction.user.tag}`);
         }
 
         const log = interaction.guild.channels.cache.get(config.logAprovacoes);
         if (log) {
-          log.send(`✅ ${membro.user.tag} aprovado por ${interaction.user.tag}\nCargo: ${sistema.nome}\nApelido: ${nickname}`);
+          log.send(`✅ ${membro.user.tag} aprovado por ${interaction.user.tag}\nCargo: ${nomeCargo}\nApelido: ${nickname}`);
         }
 
         await interaction.message.edit({ content: '✅ Aprovado!', components: [] });
