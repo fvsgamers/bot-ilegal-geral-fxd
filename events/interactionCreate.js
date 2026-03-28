@@ -71,29 +71,39 @@ module.exports = (client) => {
       }
 
       // ================= FAMÍLIA =================
-      if (interaction.isStringSelectMenu() && interaction.customId === 'ata_select_familia') {
+      if (interaction.isStringSelectMenu() && interaction.customId === 'ata_familia') {
 
-        const familiaId = interaction.values[0];
-
-        const membros = interaction.guild.members.cache.filter(m =>
-          m.roles.cache.some(r => config.lideranca.includes(r.id))
-        );
-
-        const select = new StringSelectMenuBuilder()
-          .setCustomId(`ata_select_responsavel_${familiaId}`)
-          .setPlaceholder('Escolha o responsável')
-          .addOptions(
-            membros.map(m => ({
-              label: m.displayName,
-              value: m.id
-            })).slice(0, 25)
+          await interaction.deferUpdate();
+        
+          const familiaId = interaction.values[0];
+        
+          await interaction.guild.members.fetch();
+        
+          const membros = interaction.guild.members.cache.filter(m =>
+            m.roles.cache.some(r => config.lideranca.includes(r.id))
           );
-
-        return interaction.update({
-          content: '🏷️ Escolha o responsável:',
-          components: [new ActionRowBuilder().addComponents(select)]
-        });
-      }
+        
+          if (!membros.size)
+            return interaction.editReply({
+              content: '❌ Nenhum líder encontrado.',
+              components: []
+            });
+        
+          const select = new StringSelectMenuBuilder()
+            .setCustomId(`ata_resp_${familiaId}`)
+            .setPlaceholder('Responsável')
+            .addOptions(
+              membros.map(m => ({
+                label: m.displayName,
+                value: m.id
+              })).slice(0, 25)
+            );
+        
+          await interaction.editReply({
+            content: '🏷️ Escolha o responsável:',
+            components: [new ActionRowBuilder().addComponents(select)]
+          });
+        }
 
       // ================= RESPONSÁVEL =================
       if (interaction.isStringSelectMenu() && interaction.customId.startsWith('ata_select_responsavel_')) {
