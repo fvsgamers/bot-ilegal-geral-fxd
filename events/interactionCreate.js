@@ -71,39 +71,32 @@ module.exports = (client) => {
       }
 
       // ================= FAMÍLIA =================
-      if (interaction.isStringSelectMenu() && interaction.customId === 'ata_familia') {
+      if (interaction.isButton() && interaction.customId === 'abrir_ata') {
 
-          await interaction.deferUpdate();
-        
-          const familiaId = interaction.values[0];
-        
-          await interaction.guild.members.fetch();
-        
-          const membros = interaction.guild.members.cache.filter(m =>
-            m.roles.cache.some(r => config.lideranca.includes(r.id))
+        if (interaction.channel.id !== CANAL_PERMITIDO)
+          return interaction.reply({ content: '❌ Canal incorreto.', ephemeral: true });
+      
+        if (!interaction.member.roles.cache.some(r => CARGOS_PERMITIDOS.includes(r.id)))
+          return interaction.reply({ content: '❌ Sem permissão.', ephemeral: true });
+      
+        // 🔥 RESPONDE IMEDIATAMENTE
+        await interaction.deferReply({ ephemeral: true });
+      
+        const select = new StringSelectMenuBuilder()
+          .setCustomId('ata_familia')
+          .setPlaceholder('Escolher família')
+          .addOptions(
+            Object.entries(config.familias).map(([id, f]) => ({
+              label: f.nome,
+              value: id
+            })).slice(0, 25)
           );
-        
-          if (!membros.size)
-            return interaction.editReply({
-              content: '❌ Nenhum líder encontrado.',
-              components: []
-            });
-        
-          const select = new StringSelectMenuBuilder()
-            .setCustomId(`ata_resp_${familiaId}`)
-            .setPlaceholder('Responsável')
-            .addOptions(
-              membros.map(m => ({
-                label: m.displayName,
-                value: m.id
-              })).slice(0, 25)
-            );
-        
-          await interaction.editReply({
-            content: '🏷️ Escolha o responsável:',
-            components: [new ActionRowBuilder().addComponents(select)]
-          });
-        }
+      
+        await interaction.editReply({
+          content: '👨‍👩‍👧 Escolha a família:',
+          components: [new ActionRowBuilder().addComponents(select)]
+        });
+      }
 
       // ================= RESPONSÁVEL =================
       if (interaction.isStringSelectMenu() && interaction.customId.startsWith('ata_select_responsavel_')) {
