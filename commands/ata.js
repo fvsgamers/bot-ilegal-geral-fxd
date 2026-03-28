@@ -111,7 +111,7 @@ module.exports = {
         { name: '🏷️ Responsável', value: cargo },
         { name: '📋 Assuntos', value: assuntos },
         { name: '✅ Decisões', value: decisoes },
-        { name: '👤 Autor', value: interaction.user.username }
+        { name: '👤 Autor', value: interaction.member.displayName }
       )
       .setTimestamp();
 
