@@ -222,7 +222,7 @@ module.exports = (client) => {
         if (canalRegistro) {
           const linha = `| ----------------------------------------------------------------|`;
 
-          const mensagem = `\n📜 **Batizado**\n\n👤 **Nome:** ${nome}\n🕶️ **Vulgo:** ${vulgo}\n🆔 **ID:** ${id}\n📞 **Telefone:** ${telefone}\n🏷️ **Cargo:** ${sistema.nome}\n🧑‍💼 **Aprovado por:** ${interaction.member.displayName}\n\n${linha}\n`;
+          const mensagem = `\n📜 **Batizado**\n\n👤 **Nome:** ${dados.nome}\n🕶️ **Vulgo:** ${dados.vulgo}\n🆔 **ID:** ${dados.id}\n📞 **Telefone:** ${dados.telefone}\n🏷️ **Cargo:** ${apelidosCargos[dados.cargo]}\n👨‍👩‍👧 **Família:** ${config.familias[dados.familia]?.nome || 'Família'}\n🧑‍💼 **Aprovado por:** ${interaction.member.displayName}\n\n${linha}\n`;
 
           canalRegistro.send(mensagem);
         }
