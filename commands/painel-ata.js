@@ -1,31 +1,25 @@
 const { SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
-
-const CARGOS_PERMITIDOS = [
-  '1485779006325395606',
-  '1485783504250867803',
-  '1485783736606916733',
-  '1485784858591756420'
-];
+const config = require('../config.json');
 
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('painel-ata')
-    .setDescription('Abrir painel de ATA'),
+    .setDescription('Abrrir sistema de ATA'),
 
   async execute(interaction) {
 
     const temPermissao = interaction.member.roles.cache.some(role =>
-      CARGOS_PERMITIDOS.includes(role.id)
+      config.lideranca.includes(role.id)
     );
 
     if (!temPermissao) {
       return interaction.reply({
-        content: '❌ Apenas líderes podem acessar!',
+        content: '❌ Apenas líderes podem usar!',
         ephemeral: true
       });
     }
 
-    const botao = new ActionRowBuilder().addComponents(
+    const row = new ActionRowBuilder().addComponents(
       new ButtonBuilder()
         .setCustomId('abrir_ata')
         .setLabel('📄 Criar ATA')
@@ -33,8 +27,8 @@ module.exports = {
     );
 
     await interaction.reply({
-      content: '📋 Painel de ATA',
-      components: [botao]
+      content: '📋 Sistema de ATA',
+      components: [row]
     });
   }
 };
