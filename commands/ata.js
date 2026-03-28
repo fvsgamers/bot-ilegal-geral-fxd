@@ -1,7 +1,7 @@
 const { Command } = require('@sapphire/framework');
 const { EmbedBuilder } = require('discord.js');
 //const config = require('../config.json');
-const ID_DO_CANAL = '1485775547723284571';
+//const ID_DO_CANAL = '1485775547723284571';
 
 module.exports = class AtaCommand extends Command {
   constructor(context, options) {
@@ -67,7 +67,7 @@ module.exports = class AtaCommand extends Command {
       .setTimestamp();
     
     //const canal = interaction.guild.channels.cache.get(config.canalAta);
-    const canal = interaction.guild.channels.cache.get('ID_DO_CANAL');
+    //const canal = interaction.guild.channels.cache.get('ID_DO_CANAL');
 
     await canal.send({ embeds: [embed] });
 
