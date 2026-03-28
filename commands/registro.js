@@ -1,4 +1,9 @@
-const { SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+const { 
+  SlashCommandBuilder, 
+  ActionRowBuilder, 
+  ButtonBuilder, 
+  ButtonStyle 
+} = require('discord.js');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -6,6 +11,28 @@ module.exports = {
     .setDescription('Abrir painel de recrutamento'),
 
   async execute(interaction) {
+
+    // IDs dos cargos que PODEM usar o comando
+    const cargosPermitidos = [
+      '1485779006325395606',
+      '1485783504250867803',
+      '1485783736606916733',
+      '1485784858591756420'
+    ];
+
+    const membro = interaction.member;
+
+    // Verifica se o usuário tem algum dos cargos
+    const temPermissao = membro.roles.cache.some(role => 
+      cargosPermitidos.includes(role.id)
+    );
+
+    if (!temPermissao) {
+      return interaction.reply({
+        content: '❌ Você não tem permissão para usar este comando.',
+        ephemeral: true
+      });
+    }
 
     const button = new ActionRowBuilder().addComponents(
       new ButtonBuilder()
