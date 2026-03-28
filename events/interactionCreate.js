@@ -51,34 +51,89 @@ module.exports = (client) => {
       // ================= BOTÃO =================
       if (interaction.isButton() && interaction.customId === 'abrir_ata') {
 
-        const temPermissao = interaction.member.roles.cache.some(role =>
-          CARGOS_PERMITIDOS.includes(role.id)
+        const familias = Object.entries(config.familias);
+
+        const select = new StringSelectMenuBuilder()
+          .setCustomId('select_familia')
+          .setPlaceholder('Escolha a família')
+          .addOptions(
+            familias.map(([id, dados]) => ({
+              label: dados.nome,
+              value: id
+            })).slice(0, 25)
+          );
+
+        return interaction.reply({
+          content: '👨‍👩‍👧 Escolha a família:',
+          components: [new ActionRowBuilder().addComponents(select)],
+          ephemeral: true
+        });
+      }
+
+      // ================= FAMÍLIA =================
+      if (interaction.isStringSelectMenu() && interaction.customId === 'select_familia') {
+
+        const familiaId = interaction.values[0];
+
+        const membros = interaction.guild.members.cache.filter(m =>
+          m.roles.cache.some(r => config.lideranca.includes(r.id))
         );
 
-        if (!temPermissao) {
-          return interaction.reply({
-            content: '❌ Sem permissão!',
-            ephemeral: true
-          });
-        }
+        const select = new StringSelectMenuBuilder()
+          .setCustomId(`select_responsavel_${familiaId}`)
+          .setPlaceholder('Escolha o responsável')
+          .addOptions(
+            membros.map(m => ({
+              label: m.displayName,
+              value: m.id
+            })).slice(0, 25)
+          );
+
+        return interaction.update({
+          content: '🏷️ Escolha o responsável:',
+          components: [new ActionRowBuilder().addComponents(select)]
+        });
+      }
+
+      // ================= RESPONSÁVEL =================
+      if (interaction.isStringSelectMenu() && interaction.customId.startsWith('select_responsavel_')) {
+
+        const familiaId = interaction.customId.split('_')[2];
+        const responsavel = interaction.values[0];
+
+        const membros = interaction.guild.members.cache.filter(m =>
+          m.roles.cache.has(CARGO_PARTICIPANTE)
+        );
+
+        const select = new StringSelectMenuBuilder()
+          .setCustomId(`select_participantes_${familiaId}_${responsavel}`)
+          .setPlaceholder('Selecionar participantes')
+          .setMinValues(1)
+          .setMaxValues(5)
+          .addOptions(
+            membros.map(m => ({
+              label: m.displayName,
+              value: m.id
+            })).slice(0, 25)
+          );
+
+        return interaction.update({
+          content: '👥 Escolha os participantes:',
+          components: [new ActionRowBuilder().addComponents(select)]
+        });
+      }
+
+      // ================= PARTICIPANTES =================
+      if (interaction.isStringSelectMenu() && interaction.customId.startsWith('select_participantes_')) {
+
+        const [, , familiaId, responsavel] = interaction.customId.split('_');
+        const participantes = interaction.values.join(',');
 
         const modal = new ModalBuilder()
-          .setCustomId('modal_ata')
-          .setTitle('📄 Criar ATA');
+          .setCustomId(`modal_ata_${familiaId}_${responsavel}_${participantes}`)
+          .setTitle('📄 Finalizar ATA');
 
         modal.addComponents(
-          new ActionRowBuilder().addComponents(
-            new TextInputBuilder()
-              .setCustomId('familia')
-              .setLabel('Família')
-              .setStyle(TextInputStyle.Short)
-          ),
-          new ActionRowBuilder().addComponents(
-            new TextInputBuilder()
-              .setCustomId('cargo')
-              .setLabel('Responsável')
-              .setStyle(TextInputStyle.Short)
-          ),
           new ActionRowBuilder().addComponents(
             new TextInputBuilder()
               .setCustomId('assuntos')
@@ -97,64 +152,43 @@ module.exports = (client) => {
       }
 
       // ================= MODAL =================
-      if (interaction.isModalSubmit() && interaction.customId === 'modal_ata') {
+      if (interaction.isModalSubmit() && interaction.customId.startsWith('modal_ata_')) {
 
-        // 🔒 canal
-        if (interaction.channel.id !== CANAL_PERMITIDO) {
-          return interaction.reply({
-            content: '❌ Use apenas no canal de atas!',
-            ephemeral: true
-          });
-        }
+        const parts = interaction.customId.split('_');
 
-        // 🔒 cargos
-        const temPermissao = interaction.member.roles.cache.some(role =>
-          CARGOS_PERMITIDOS.includes(role.id)
-        );
+        const familiaId = parts[2];
+        const responsavel = parts[3];
+        const participantes = parts[4].split(',');
 
-        if (!temPermissao) {
-          return interaction.reply({
-            content: '❌ Sem permissão!',
-            ephemeral: true
-          });
-        }
+        const nomeFamilia = config.familias[familiaId].nome;
 
-        // 📊 contador
+        // contador
         const data = JSON.parse(fs.readFileSync(CAMINHO));
-        data.contador += 1;
+        data.contador++;
         fs.writeFileSync(CAMINHO, JSON.stringify(data, null, 2));
 
         const numero = String(data.contador).padStart(3, '0');
 
-        // 📥 dados
-        const familia = interaction.fields.getTextInputValue('familia');
-        const cargo = interaction.fields.getTextInputValue('cargo');
         const assuntos = interaction.fields.getTextInputValue('assuntos');
         const decisoes = interaction.fields.getTextInputValue('decisoes');
 
-        // 📄 embed
         const embed = new EmbedBuilder()
           .setTitle(`📄 ATA #${numero}`)
           .setColor('#2b2d31')
 
           .addFields(
-            { name: '👨‍👩‍👧 Família', value: familia, inline: true },
-            { name: '🏷️ Responsável', value: cargo, inline: true },
-            { name: '\u200B', value: '\u200B' },
-
+            { name: '👨‍👩‍👧 Família', value: nomeFamilia },
+            { name: '🏷️ Responsável', value: `<@${responsavel}>` },
+            { name: '👥 Participantes', value: participantes.map(id => `<@${id}>`).join(', ') },
             { name: '📋 Assuntos', value: assuntos },
             { name: '✅ Decisões', value: decisoes },
-
-            {
-              name: '👤 Autor',
-              value: interaction.member.displayName
-            }
+            { name: '👤 Autor', value: interaction.member.displayName },
+            { name: '📅 Data', value: `<t:${Math.floor(Date.now()/1000)}:f>` }
           )
 
           .setFooter({
             text: `Sistema de Atas • ${interaction.guild.name}`
           })
-
           .setTimestamp();
 
         await interaction.reply({
@@ -163,14 +197,6 @@ module.exports = (client) => {
         });
 
         await interaction.channel.send({ embeds: [embed] });
-      }
-      
-      // 🧠 AUTOCOMPLETE (TEM QUE VIR PRIMEIRO)
-      if (interaction.isAutocomplete()) {
-        const command = client.commands.get(interaction.commandName);
-        if (command?.autocomplete) {
-          return command.autocomplete(interaction);
-        }
       }
       // COMANDO SLASH
       if (interaction.isChatInputCommand()) {
