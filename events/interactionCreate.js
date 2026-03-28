@@ -223,7 +223,8 @@ module.exports = (client) => {
             { name: '👤 Autor', value: interaction.member.displayName },
             { name: '📅 Data', value: `<t:${Math.floor(Date.now()/1000)}:f>` }
           );
-          .setTimestamp();
+          embed.setTimestamp();  
+        //.setTimestamp();
       
         await interaction.reply({ content: '✅ ATA criada!', ephemeral: true });
         await interaction.channel.send({ embeds: [embed] });
