@@ -1,6 +1,6 @@
 const { Command } = require('@sapphire/framework');
 const { EmbedBuilder } = require('discord.js');
-const ID_DO_CANAL = 1485775547723284571;
+const ID_DO_CANAL = '1485775547723284571';
 
 module.exports = class AtaCommand extends Command {
   constructor(context, options) {
