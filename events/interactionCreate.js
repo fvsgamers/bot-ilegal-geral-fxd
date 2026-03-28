@@ -48,28 +48,40 @@ const apelidosCargos = {
 module.exports = (client) => {
   client.on('interactionCreate', async (interaction) => {
     try {
-      // ================= BOTÃO =================
-      if (interaction.isButton() && interaction.customId === 'abrir_ata') {
+      if (interaction.isStringSelectMenu() && interaction.customId === 'ata_select_familia') {
 
-        const familias = Object.entries(config.familias);
-
+        await interaction.deferUpdate();
+      
+        const familiaId = interaction.values[0];
+      
+        await interaction.guild.members.fetch();
+      
+        const membros = interaction.guild.members.cache.filter(m =>
+          m.roles.cache.some(r => config.lideranca.includes(r.id))
+        );
+      
+        if (!membros.size) {
+          return interaction.editReply({
+            content: '❌ Nenhum líder encontrado.',
+            components: []
+          });
+        }
+      
         const select = new StringSelectMenuBuilder()
-          .setCustomId('ata_select_familia')
-          .setPlaceholder('Escolha a família')
+          .setCustomId(`ata_select_responsavel_${familiaId}`)
+          .setPlaceholder('Selecionar responsável')
           .addOptions(
-            familias.map(([id, dados]) => ({
-              label: dados.nome,
-              value: id
+            membros.map(m => ({
+              label: m.displayName,
+              value: m.id
             })).slice(0, 25)
           );
-
-        return interaction.reply({
-          content: '👨‍👩‍👧 Escolha a família:',
-          components: [new ActionRowBuilder().addComponents(select)],
-          ephemeral: true
+      
+        await interaction.editReply({
+          content: '🏷️ Escolha o responsável:',
+          components: [new ActionRowBuilder().addComponents(select)]
         });
       }
-
       // ================= FAMÍLIA =================
       if (interaction.isButton() && interaction.customId === 'abrir_ata') {
 
@@ -83,7 +95,7 @@ module.exports = (client) => {
         await interaction.deferReply({ ephemeral: true });
       
         const select = new StringSelectMenuBuilder()
-          .setCustomId('ata_familia')
+          .setCustomId('ata_select_familia')
           .setPlaceholder('Escolher família')
           .addOptions(
             Object.entries(config.familias).map(([id, f]) => ({
