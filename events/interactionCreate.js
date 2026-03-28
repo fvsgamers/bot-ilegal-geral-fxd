@@ -36,13 +36,19 @@ const apelidosCargos = {
 
 module.exports = (client) => {
   client.on('interactionCreate', async (interaction) => {
+    if (!interaction.isChatInputCommand()) return;
+
+    const command = client.commands.get(interaction.commandName);
+
+    if (!command) return;
+
     try {
-      // ===== COMANDOS =====
-      if (interaction.isChatInputCommand()) {
-        const command = client.commands.get(interaction.commandName);
-        if (command) await command.execute(interaction);
-        return;
-      }
+      await command.execute(interaction);
+    } catch (error) {
+      console.error(error);
+    }
+  });
+};
 
       // ===== ABRIR FORM =====
       if (interaction.isButton() && interaction.customId === 'abrir_formulario') {
