@@ -14,7 +14,7 @@ const {
 const config = require('../config.json');
 const fs = require('fs');
 const CAMINHO = './atas.json';
-
+const CARGO_PARTICIPANTE = '1485779730845270036';
 const CANAL_PERMITIDO = '1485775547723284571';
 
 const CARGOS_PERMITIDOS = [
@@ -124,7 +124,7 @@ module.exports = (client) => {
       }
 
       // ================= PARTICIPANTES =================
-      const CARGO_PARTICIPANTE = '1485779730845270036';
+      
       if (interaction.isStringSelectMenu() && interaction.customId.startsWith('ata_select_participantes_')) {
 
         const [, , familiaId, responsavel] = interaction.customId.split('_');
@@ -284,7 +284,7 @@ module.exports = (client) => {
           return interaction.reply({ content: `✅ Cargo selecionado!`, flags: 64 });
         }
 
-        if (interaction.customId === 'select_familia') {
+        if (interaction.customId === 'registro_select_familia') {
           dados.familia = interaction.values[0];
 
           const nomeCanal = `registro-${dados.nome.replace(/[^a-zA-Z0-9]/g, '').toLowerCase()}`;
