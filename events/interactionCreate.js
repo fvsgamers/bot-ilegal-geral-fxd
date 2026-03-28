@@ -54,7 +54,7 @@ module.exports = (client) => {
         const familias = Object.entries(config.familias);
 
         const select = new StringSelectMenuBuilder()
-          .setCustomId('select_familia')
+          .setCustomId('ata_select_familia')
           .setPlaceholder('Escolha a família')
           .addOptions(
             familias.map(([id, dados]) => ({
@@ -71,7 +71,7 @@ module.exports = (client) => {
       }
 
       // ================= FAMÍLIA =================
-      if (interaction.isStringSelectMenu() && interaction.customId === 'select_familia') {
+      if (interaction.isStringSelectMenu() && interaction.customId === 'ata_select_familia') {
 
         const familiaId = interaction.values[0];
 
@@ -80,7 +80,7 @@ module.exports = (client) => {
         );
 
         const select = new StringSelectMenuBuilder()
-          .setCustomId(`select_responsavel_${familiaId}`)
+          .setCustomId(`ata_select_responsavel_${familiaId}`)
           .setPlaceholder('Escolha o responsável')
           .addOptions(
             membros.map(m => ({
@@ -96,7 +96,7 @@ module.exports = (client) => {
       }
 
       // ================= RESPONSÁVEL =================
-      if (interaction.isStringSelectMenu() && interaction.customId.startsWith('select_responsavel_')) {
+      if (interaction.isStringSelectMenu() && interaction.customId.startsWith('ata_select_responsavel_')) {
 
         const familiaId = interaction.customId.split('_')[2];
         const responsavel = interaction.values[0];
@@ -106,7 +106,7 @@ module.exports = (client) => {
         );
 
         const select = new StringSelectMenuBuilder()
-          .setCustomId(`select_participantes_${familiaId}_${responsavel}`)
+          .setCustomId(`ata_select_participantes_${familiaId}_${responsavel}`)
           .setPlaceholder('Selecionar participantes')
           .setMinValues(1)
           .setMaxValues(5)
@@ -125,7 +125,7 @@ module.exports = (client) => {
 
       // ================= PARTICIPANTES =================
       const CARGO_PARTICIPANTE = '1485779730845270036';
-      if (interaction.isStringSelectMenu() && interaction.customId.startsWith('select_participantes_')) {
+      if (interaction.isStringSelectMenu() && interaction.customId.startsWith('ata_select_participantes_')) {
 
         const [, , familiaId, responsavel] = interaction.customId.split('_');
         const participantes = interaction.values.join(',');
@@ -153,7 +153,7 @@ module.exports = (client) => {
       }
 
       // ================= MODAL =================
-      if (interaction.isModalSubmit() && interaction.customId.startsWith('modal_ata_')) {
+      if (interaction.isModalSubmit() && interaction.customId.startsWith('ata_modal_')) {
 
         const parts = interaction.customId.split('_');
 
@@ -163,40 +163,27 @@ module.exports = (client) => {
 
         const nomeFamilia = config.familias[familiaId].nome;
 
-        // contador
         const data = JSON.parse(fs.readFileSync(CAMINHO));
         data.contador++;
         fs.writeFileSync(CAMINHO, JSON.stringify(data, null, 2));
-
+      
         const numero = String(data.contador).padStart(3, '0');
-
-        const assuntos = interaction.fields.getTextInputValue('assuntos');
-        const decisoes = interaction.fields.getTextInputValue('decisoes');
-
+      
         const embed = new EmbedBuilder()
           .setTitle(`📄 ATA #${numero}`)
           .setColor('#2b2d31')
-
           .addFields(
             { name: '👨‍👩‍👧 Família', value: nomeFamilia },
             { name: '🏷️ Responsável', value: `<@${responsavel}>` },
             { name: '👥 Participantes', value: participantes.map(id => `<@${id}>`).join(', ') },
-            { name: '📋 Assuntos', value: assuntos },
-            { name: '✅ Decisões', value: decisoes },
+            { name: '📋 Assuntos', value: interaction.fields.getTextInputValue('assuntos') },
+            { name: '✅ Decisões', value: interaction.fields.getTextInputValue('decisoes') },
             { name: '👤 Autor', value: interaction.member.displayName },
             { name: '📅 Data', value: `<t:${Math.floor(Date.now()/1000)}:f>` }
           )
-
-          .setFooter({
-            text: `Sistema de Atas • ${interaction.guild.name}`
-          })
           .setTimestamp();
-
-        await interaction.reply({
-          content: `✅ ATA #${numero} criada!`,
-          ephemeral: true
-        });
-
+      
+        await interaction.reply({ content: '✅ ATA criada!', ephemeral: true });
         await interaction.channel.send({ embeds: [embed] });
       }
       // COMANDO SLASH
@@ -275,7 +262,7 @@ module.exports = (client) => {
 
         const selectFamilia = new ActionRowBuilder().addComponents(
           new StringSelectMenuBuilder()
-            .setCustomId('select_familia')
+            .setCustomId('registro_select_familia')
             .setPlaceholder('Selecione a família')
             .addOptions(familiasOptions)
         );
