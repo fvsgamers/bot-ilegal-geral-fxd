@@ -171,105 +171,62 @@ module.exports = (client) => {
       }
 
       // ================= MODAL =================
-      if (interaction.isModalSubmit() && interaction.customId.startsWith('ata_modal_')) {
-        
-        const parts = interaction.customId.split('_');
+      if (interaction.isModalSubmit() && interaction.customId.startsWith('modal_ata_')) {
 
-        const familiaId = parts[2];
-        const responsavel = parts[3];
-        const participantes = parts[4].split(',');
-
-        const nomeFamilia = config.familias[familiaId].nome;
-
-        const data = JSON.parse(fs.readFileSync(CAMINHO));
-        data.contador++;
-        fs.writeFileSync(CAMINHO, JSON.stringify(data, null, 2));
+        const chave = interaction.customId.replace('modal_ata_', '');
+        const dados = dadosTemp[chave];
       
-        const numero = String(data.contador).padStart(3, '0');
+        if (!dados) {
+          return interaction.reply({ content: '❌ Dados expiraram.', ephemeral: true });
+        }
+      
+        const { familiaId, responsavel, participantes } = dados;
+      
+        const nomeFamilia = config.familias[familiaId].nome;
       
         const embed = new EmbedBuilder()
-          .setTitle(`📄 ATA #${numero}`)
+          .setTitle(`📄 ATA`)
           .setColor('#2b2d31')
           .addFields(
             { name: '👨‍👩‍👧 Família', value: nomeFamilia },
-            { name: '🏷️ Responsável', value: `<@${responsavel}>`}
+            { name: '🏷️ Responsável', value: `<@${responsavel}>` }
           );
-            const chunks = [];
-            let temp = '';
-            
-            for (const id of participantes) {
-              const mention = `<@${id}>, `;
-            
-              if ((temp + mention).length > 1024) {
-                chunks.push(temp);
-                temp = '';
-              }
-            
-              temp += mention;
-            }
-            
-            if (temp) chunks.push(temp);
-            
-            chunks.forEach((chunk, i) => {
-              embed.addFields({
-                name: `👥 Participantes ${i + 1}`,
-                value: chunk
-              });
-            });
-            //{ name: '👥 Participantes', value: participantes.map(id => `<@${id}>`).join(', ') },
-            embed.addFields(
-            { name: '📋 Assuntos', value: interaction.fields.getTextInputValue('assuntos') },
-            { name: '✅ Decisões', value: interaction.fields.getTextInputValue('decisoes') },
-            { name: '👤 Autor', value: interaction.member.displayName },
-            { name: '📅 Data', value: `<t:${Math.floor(Date.now()/1000)}:f>` }
-          );
-          embed.setTimestamp();  
-        //.setTimestamp();
+      
+        // PARTICIPANTES
+        const chunks = [];
+        let temp = '';
+      
+        for (const id of participantes) {
+          const mention = `<@${id}>, `;
+          if ((temp + mention).length > 1024) {
+            chunks.push(temp);
+            temp = '';
+          }
+          temp += mention;
+        }
+      
+        if (temp) chunks.push(temp);
+      
+        chunks.forEach((chunk, i) => {
+          embed.addFields({
+            name: `👥 Participantes ${i + 1}`,
+            value: chunk
+          });
+        });
+      
+        embed.addFields(
+          { name: '📋 Assuntos', value: interaction.fields.getTextInputValue('assuntos') },
+          { name: '✅ Decisões', value: interaction.fields.getTextInputValue('decisoes') },
+          { name: '👤 Autor', value: interaction.member.displayName },
+          { name: '📅 Data', value: `<t:${Math.floor(Date.now()/1000)}:f>` }
+        );
+      
+        embed.setTimestamp();
       
         await interaction.reply({ content: '✅ ATA criada!', ephemeral: true });
         await interaction.channel.send({ embeds: [embed] });
-      }
-      // COMANDO SLASH
-      if (interaction.isChatInputCommand()) {
-        const command = client.commands.get(interaction.commandName);
-        if (!command) return;
-        return await command.execute(interaction);
-      }
-
-      // ===== ABRIR FORM =====
-      if (interaction.isButton() && interaction.customId === 'abrir_formulario') {
-        const modal = new ModalBuilder()
-          .setCustomId('formulario_registro')
-          .setTitle('📋 Recrutamento');
-
-        modal.addComponents(
-          new ActionRowBuilder().addComponents(
-            new TextInputBuilder()
-              .setCustomId('nome')
-              .setLabel('Nome e Sobrenome')
-              .setStyle(TextInputStyle.Short)
-          ),
-          new ActionRowBuilder().addComponents(
-            new TextInputBuilder()
-              .setCustomId('id')
-              .setLabel('ID (somente números)')
-              .setStyle(TextInputStyle.Short)
-          ),
-          new ActionRowBuilder().addComponents(
-            new TextInputBuilder()
-              .setCustomId('telefone')
-              .setLabel('Telefone')
-              .setStyle(TextInputStyle.Short)
-          ),
-          new ActionRowBuilder().addComponents(
-            new TextInputBuilder()
-              .setCustomId('vulgo')
-              .setLabel('Vulgo')
-              .setStyle(TextInputStyle.Short)
-          )
-        );
-
-        return interaction.showModal(modal);
+      
+        delete dadosTemp[chave]; // limpa memória
       }
 
       // ===== MODAL SUBMIT =====
