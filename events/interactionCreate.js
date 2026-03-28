@@ -124,6 +124,7 @@ module.exports = (client) => {
       }
 
       // ================= PARTICIPANTES =================
+      const CARGO_PARTICIPANTE = '1485779730845270036';
       if (interaction.isStringSelectMenu() && interaction.customId.startsWith('select_participantes_')) {
 
         const [, , familiaId, responsavel] = interaction.customId.split('_');
