@@ -143,15 +143,15 @@ module.exports = (client) => {
       if (interaction.isStringSelectMenu() && interaction.customId.startsWith('ata_select_participantes_')) {
 
         const [, , familiaId, responsavel] = interaction.customId.split('_');
-        const participantes = interaction.values.join(',');
-
+        const participantes = interaction.values;
+      
+        const chave = `${interaction.user.id}_${Date.now()}`;
+        dadosTemp[chave] = { familiaId, responsavel, participantes };
+      
         const modal = new ModalBuilder()
-          const chave = `${interaction.user.id}_${Date.now()}`;
-          dadosTemp[chave] = { familiaId, responsavel, participantes };
-
           .setCustomId(`modal_ata_${chave}`)
           .setTitle('📄 Finalizar ATA');
-
+      
         modal.addComponents(
           new ActionRowBuilder().addComponents(
             new TextInputBuilder()
@@ -166,7 +166,7 @@ module.exports = (client) => {
               .setStyle(TextInputStyle.Paragraph)
           )
         );
-
+      
         return interaction.showModal(modal);
       }
 
