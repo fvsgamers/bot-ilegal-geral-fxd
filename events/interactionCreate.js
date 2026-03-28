@@ -37,7 +37,14 @@ const apelidosCargos = {
 module.exports = (client) => {
   client.on('interactionCreate', async (interaction) => {
     try {
-
+      
+      // 🧠 AUTOCOMPLETE (TEM QUE VIR PRIMEIRO)
+      if (interaction.isAutocomplete()) {
+        const command = client.commands.get(interaction.commandName);
+        if (command?.autocomplete) {
+          return command.autocomplete(interaction);
+        }
+      }
       // COMANDO SLASH
       if (interaction.isChatInputCommand()) {
         const command = client.commands.get(interaction.commandName);
