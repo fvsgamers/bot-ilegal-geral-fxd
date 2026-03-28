@@ -64,7 +64,7 @@ module.exports = class AtaCommand extends Command {
       )
       .setTimestamp();
 
-    const canal = interaction.guild.channels.cache.get('ID_DO_CANAL');
+    const canal = interaction.guild.channels.cache.get('1485775547723284571');
 
     await canal.send({ embeds: [embed] });
 
