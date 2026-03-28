@@ -216,6 +216,17 @@ module.exports = (client) => {
           await membro.roles.remove('1485783096250077246');
         }
 
+        // ===== REGISTRO CENTRAL =====
+        const canalRegistro = interaction.guild.channels.cache.get('1487297164811046912');
+
+        if (canalRegistro) {
+          const linha = `| ----------------------------------------------------------------|`;
+
+          const mensagem = `\n📜 **Batizado**\n\n👤 **Nome:** ${nome}\n🕶️ **Vulgo:** ${vulgo}\n🆔 **ID:** ${id}\n📞 **Telefone:** ${telefone}\n🏷️ **Cargo:** ${sistema.nome}\n🧑‍💼 **Aprovado por:** ${interaction.member.displayName}\n\n${linha}\n`;
+
+          canalRegistro.send(mensagem);
+        }
+
         const faltando = cargosAdicionar.filter(c => !membro.roles.cache.has(c));
         if (faltando.length > 0) await membro.roles.add(faltando);
 
