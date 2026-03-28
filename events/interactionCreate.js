@@ -146,7 +146,10 @@ module.exports = (client) => {
         const participantes = interaction.values.join(',');
 
         const modal = new ModalBuilder()
-          .setCustomId(`modal_ata_${familiaId}_${responsavel}_${participantes}`)
+          const chave = `${interaction.user.id}_${Date.now()}`;
+          dadosTemp[chave] = { familiaId, responsavel, participantes };
+
+          .setCustomId(`modal_ata_${chave}`)
           .setTitle('📄 Finalizar ATA');
 
         modal.addComponents(
@@ -169,7 +172,7 @@ module.exports = (client) => {
 
       // ================= MODAL =================
       if (interaction.isModalSubmit() && interaction.customId.startsWith('ata_modal_')) {
-
+        
         const parts = interaction.customId.split('_');
 
         const familiaId = parts[2];
@@ -189,13 +192,37 @@ module.exports = (client) => {
           .setColor('#2b2d31')
           .addFields(
             { name: '👨‍👩‍👧 Família', value: nomeFamilia },
-            { name: '🏷️ Responsável', value: `<@${responsavel}>` },
-            { name: '👥 Participantes', value: participantes.map(id => `<@${id}>`).join(', ') },
+            { name: '🏷️ Responsável', value: `<@${responsavel}>`}
+          );
+            const chunks = [];
+            let temp = '';
+            
+            for (const id of participantes) {
+              const mention = `<@${id}>, `;
+            
+              if ((temp + mention).length > 1024) {
+                chunks.push(temp);
+                temp = '';
+              }
+            
+              temp += mention;
+            }
+            
+            if (temp) chunks.push(temp);
+            
+            chunks.forEach((chunk, i) => {
+              embed.addFields({
+                name: `👥 Participantes ${i + 1}`,
+                value: chunk
+              });
+            });
+            //{ name: '👥 Participantes', value: participantes.map(id => `<@${id}>`).join(', ') },
+            embed.addFields(
             { name: '📋 Assuntos', value: interaction.fields.getTextInputValue('assuntos') },
             { name: '✅ Decisões', value: interaction.fields.getTextInputValue('decisoes') },
             { name: '👤 Autor', value: interaction.member.displayName },
             { name: '📅 Data', value: `<t:${Math.floor(Date.now()/1000)}:f>` }
-          )
+          );
           .setTimestamp();
       
         await interaction.reply({ content: '✅ ATA criada!', ephemeral: true });
