@@ -14,7 +14,7 @@ const {
 const config = require('../config.json');
 const fs = require('fs');
 const CAMINHO = './atas.json';
-const CARGO_PARTICIPANTE = '1485779730845270036';
+
 const CANAL_PERMITIDO = '1485775547723284571';
 
 const CARGOS_PERMITIDOS = [
@@ -44,130 +44,41 @@ const apelidosCargos = {
   '1487292693250834562': 'Sub Gerente',
   '1485785011931316224': 'Membro'
 };
-//FUNCOES ATA //
-function gerarNumeroAta() {
-  if (!fs.existsSync(CAMINHO)) return 1;
-  const dados = JSON.parse(fs.readFileSync(CAMINHO));
-  return dados.length + 1;
-}
-
-function salvarAta(ata) {
-  let dados = [];
-  if (fs.existsSync(CAMINHO)) {
-    dados = JSON.parse(fs.readFileSync(CAMINHO));
-  }
-  dados.push(ata);
-  fs.writeFileSync(CAMINHO, JSON.stringify(dados, null, 2));
-}
 
 module.exports = (client) => {
   client.on('interactionCreate', async (interaction) => {
     try {
-      if (interaction.isStringSelectMenu() && interaction.customId === 'ata_select_familia') {
-
-        await interaction.deferUpdate();
-      
-        const familiaId = interaction.values[0];
-      
-        await interaction.guild.members.fetch();
-      
-        const membros = interaction.guild.members.cache.filter(m =>
-          m.roles.cache.some(r => config.lideranca.includes(r.id))
-        );
-      
-        if (!membros.size) {
-          return interaction.editReply({
-            content: '❌ Nenhum líder encontrado.',
-            components: []
-          });
-        }
-      
-        const select = new StringSelectMenuBuilder()
-          .setCustomId(`ata_select_responsavel_${familiaId}`)
-          .setPlaceholder('Selecionar responsável')
-          .addOptions(
-            membros.map(m => ({
-              label: m.displayName,
-              value: m.id
-            })).slice(0, 25)
-          );
-      
-        await interaction.editReply({
-          content: '🏷️ Escolha o responsável:',
-          components: [new ActionRowBuilder().addComponents(select)]
-        });
-      }
-      // ================= FAMÍLIA =================
+      // ================= BOTÃO =================
       if (interaction.isButton() && interaction.customId === 'abrir_ata') {
 
-        if (interaction.channel.id !== CANAL_PERMITIDO)
-          return interaction.reply({ content: '❌ Canal incorreto.', ephemeral: true });
-      
-        if (!interaction.member.roles.cache.some(r => CARGOS_PERMITIDOS.includes(r.id)))
-          return interaction.reply({ content: '❌ Sem permissão.', ephemeral: true });
-      
-        // 🔥 RESPONDE IMEDIATAMENTE
-        await interaction.deferReply({ ephemeral: true });
-      
-        const select = new StringSelectMenuBuilder()
-          .setCustomId('ata_select_familia')
-          .setPlaceholder('Escolher família')
-          .addOptions(
-            Object.entries(config.familias).map(([id, f]) => ({
-              label: f.nome,
-              value: id
-            })).slice(0, 25)
-          );
-      
-        await interaction.editReply({
-          content: '👨‍👩‍👧 Escolha a família:',
-          components: [new ActionRowBuilder().addComponents(select)]
-        });
-      }
-
-      // ================= RESPONSÁVEL =================
-      if (interaction.isStringSelectMenu() && interaction.customId.startsWith('ata_select_responsavel_')) {
-
-        const familiaId = interaction.customId.split('_')[2];
-        const responsavel = interaction.values[0];
-
-        const membros = interaction.guild.members.cache.filter(m =>
-          m.roles.cache.has(CARGO_PARTICIPANTE)
+        const temPermissao = interaction.member.roles.cache.some(role =>
+          CARGOS_PERMITIDOS.includes(role.id)
         );
 
-        const select = new StringSelectMenuBuilder()
-          .setCustomId(`ata_select_participantes_${familiaId}_${responsavel}`)
-          .setPlaceholder('Selecionar participantes')
-          .setMinValues(1)
-          .setMaxValues(5)
-          .addOptions(
-            membros.map(m => ({
-              label: m.displayName,
-              value: m.id
-            })).slice(0, 25)
-          );
+        if (!temPermissao) {
+          return interaction.reply({
+            content: '❌ Sem permissão!',
+            ephemeral: true
+          });
+        }
 
-        return interaction.update({
-          content: '👥 Escolha os participantes:',
-          components: [new ActionRowBuilder().addComponents(select)]
-        });
-      }
-
-      // ================= PARTICIPANTES =================
-      
-      if (interaction.isStringSelectMenu() && interaction.customId.startsWith('ata_select_participantes_')) {
-
-        const [, , familiaId, responsavel] = interaction.customId.split('_');
-        const participantes = interaction.values;
-      
-        const chave = `${interaction.user.id}_${Date.now()}`;
-        dadosTemp[chave] = { familiaId, responsavel, participantes };
-      
         const modal = new ModalBuilder()
-          .setCustomId(`modal_ata_${chave}`)
-          .setTitle('📄 Finalizar ATA');
-      
+          .setCustomId('modal_ata')
+          .setTitle('📄 Criar ATA');
+
         modal.addComponents(
+          new ActionRowBuilder().addComponents(
+            new TextInputBuilder()
+              .setCustomId('familia')
+              .setLabel('Família')
+              .setStyle(TextInputStyle.Short)
+          ),
+          new ActionRowBuilder().addComponents(
+            new TextInputBuilder()
+              .setCustomId('cargo')
+              .setLabel('Responsável')
+              .setStyle(TextInputStyle.Short)
+          ),
           new ActionRowBuilder().addComponents(
             new TextInputBuilder()
               .setCustomId('assuntos')
@@ -181,149 +92,173 @@ module.exports = (client) => {
               .setStyle(TextInputStyle.Paragraph)
           )
         );
-      
+
         return interaction.showModal(modal);
       }
 
       // ================= MODAL =================
-      if (interaction.isModalSubmit() && interaction.customId.startsWith('modal_ata_')) {
+      if (interaction.isModalSubmit() && interaction.customId === 'modal_ata') {
 
-        const chave = interaction.customId.replace('modal_ata_', '');
-        const dados = dadosTemp[chave];
-      
-        if (!dados) {
-          return interaction.reply({ content: '❌ Dados expiraram.', ephemeral: true });
-        }
-      
-        const { familiaId, responsavel, participantes } = dados;
-      
-        const familia = config.familias[familiaId];
-
-        if (!familia) {
-        return interaction.reply({ content: '❌ Família inválida.', ephemeral: true });
+        // 🔒 canal
+        if (interaction.channel.id !== CANAL_PERMITIDO) {
+          return interaction.reply({
+            content: '❌ Use apenas no canal de atas!',
+            ephemeral: true
+          });
         }
 
-        const nomeFamilia = familia.nome;
-      
+        // 🔒 cargos
+        const temPermissao = interaction.member.roles.cache.some(role =>
+          CARGOS_PERMITIDOS.includes(role.id)
+        );
+
+        if (!temPermissao) {
+          return interaction.reply({
+            content: '❌ Sem permissão!',
+            ephemeral: true
+          });
+        }
+
+        // 📊 contador
+        const data = JSON.parse(fs.readFileSync(CAMINHO));
+        data.contador += 1;
+        fs.writeFileSync(CAMINHO, JSON.stringify(data, null, 2));
+
+        const numero = String(data.contador).padStart(3, '0');
+
+        // 📥 dados
+        const familia = interaction.fields.getTextInputValue('familia');
+        const cargo = interaction.fields.getTextInputValue('cargo');
+        const assuntos = interaction.fields.getTextInputValue('assuntos');
+        const decisoes = interaction.fields.getTextInputValue('decisoes');
+
+        // 📄 embed
         const embed = new EmbedBuilder()
-        const numero = gerarNumeroAta();
           .setTitle(`📄 ATA #${numero}`)
           .setColor('#2b2d31')
-          .addFields(
-            { name: '👨‍👩‍👧 Família', value: nomeFamilia },
-            { name: '🏷️ Responsável', value: `<@${responsavel}>` }
-          );
-      
-        // PARTICIPANTES
-        const chunks = [];
-        let temp = '';
-      
-        for (const id of participantes) {
-          const mention = `<@${id}>, `;
-          if ((temp + mention).length > 1024) {
-            chunks.push(temp);
-            temp = '';
-          }
-          temp += mention;
-        }
-      
-        if (temp) chunks.push(temp);
-      
-        chunks.forEach((chunk, i) => {
-          embed.addFields({
-            name: `👥 Participantes ${i + 1}`,
-            value: chunk
-          });
-        });
-      
-        embed.addFields(
-          { name: '📋 Assuntos', value: interaction.fields.getTextInputValue('assuntos') },
-          { name: '✅ Decisões', value: interaction.fields.getTextInputValue('decisoes') },
-          { name: '👤 Autor', value: interaction.member.displayName },
-          { name: '📅 Data', value: `<t:${Math.floor(Date.now()/1000)}:f>` }
-        );
-      
-        embed.setTimestamp();
-      
-        await interaction.reply({ content: '✅ ATA criada!', ephemeral: true });
-        await interaction.channel.send({ embeds: [embed] });
 
-        salvarAta({
-          numero,
-          familia: nomeFamilia,
-          responsavel,
-          participantes,
-          interaction.fields.getTextInputValue('assuntos').slice(0, 1024),
-          decisoes: interaction.fields.getTextInputValue('decisoes'),
-          autor: interaction.user.id,
-          data: new Date()
+          .addFields(
+            { name: '👨‍👩‍👧 Família', value: familia, inline: true },
+            { name: '🏷️ Responsável', value: cargo, inline: true },
+            { name: '\u200B', value: '\u200B' },
+
+            { name: '📋 Assuntos', value: assuntos },
+            { name: '✅ Decisões', value: decisoes },
+
+            {
+              name: '👤 Autor',
+              value: interaction.member.displayName
+            }
+          )
+
+          .setFooter({
+            text: `Sistema de Atas • ${interaction.guild.name}`
+          })
+
+          .setTimestamp();
+
+        await interaction.reply({
+          content: `✅ ATA #${numero} criada!`,
+          ephemeral: true
         });
-        
-        delete dadosTemp[chave]; // limpa memória
+
+        await interaction.channel.send({ embeds: [embed] });
+      }
+      
+      // 🧠 AUTOCOMPLETE (TEM QUE VIR PRIMEIRO)
+      if (interaction.isAutocomplete()) {
+        const command = client.commands.get(interaction.commandName);
+        if (command?.autocomplete) {
+          return command.autocomplete(interaction);
+        }
+      }
+      // COMANDO SLASH
+      if (interaction.isChatInputCommand()) {
+        const command = client.commands.get(interaction.commandName);
+        if (!command) return;
+        return await command.execute(interaction);
+      }
+
+      // ===== ABRIR FORM =====
+      if (interaction.isButton() && interaction.customId === 'abrir_formulario') {
+        const modal = new ModalBuilder()
+          .setCustomId('formulario_registro')
+          .setTitle('📋 Recrutamento');
+
+        modal.addComponents(
+          new ActionRowBuilder().addComponents(
+            new TextInputBuilder()
+              .setCustomId('nome')
+              .setLabel('Nome e Sobrenome')
+              .setStyle(TextInputStyle.Short)
+          ),
+          new ActionRowBuilder().addComponents(
+            new TextInputBuilder()
+              .setCustomId('id')
+              .setLabel('ID (somente números)')
+              .setStyle(TextInputStyle.Short)
+          ),
+          new ActionRowBuilder().addComponents(
+            new TextInputBuilder()
+              .setCustomId('telefone')
+              .setLabel('Telefone')
+              .setStyle(TextInputStyle.Short)
+          ),
+          new ActionRowBuilder().addComponents(
+            new TextInputBuilder()
+              .setCustomId('vulgo')
+              .setLabel('Vulgo')
+              .setStyle(TextInputStyle.Short)
+          )
+        );
+
+        return interaction.showModal(modal);
       }
 
       // ===== MODAL SUBMIT =====
-if (interaction.isModalSubmit() && interaction.customId === 'formulario_registro') {
+      if (interaction.isModalSubmit() && interaction.customId === 'formulario_registro') {
+        const nome = interaction.fields.getTextInputValue('nome');
+        const id = interaction.fields.getTextInputValue('id');
+        const telefone = interaction.fields.getTextInputValue('telefone');
+        const vulgo = interaction.fields.getTextInputValue('vulgo');
 
-  // 🔥 RESPONDE IMEDIATAMENTE (evita interação falhou)
-  await interaction.deferReply({ ephemeral: true });
+        if (!/^\d+$/.test(id)) return interaction.reply({ content: '❌ ID inválido!', flags: 64 });
 
-  const nome = interaction.fields.getTextInputValue('nome');
-  const id = interaction.fields.getTextInputValue('id');
-  const telefone = interaction.fields.getTextInputValue('telefone');
-  const vulgo = interaction.fields.getTextInputValue('vulgo');
+        await interaction.guild.members.fetch();
+        dadosTemp[interaction.user.id] = { nome, id, telefone, vulgo };
 
-  // Validação
-  if (!/^\d+$/.test(id)) {
-    return interaction.editReply({ content: '❌ ID inválido!' });
-  }
+        // ===== CARGOS =====
+        const cargosOptions = Object.entries(apelidosCargos).map(([id, nome]) => ({
+          label: nome,
+          value: id
+        }));
 
-  // Pode demorar sem problema agora
-  await interaction.guild.members.fetch();
+        const selectCargo = new ActionRowBuilder().addComponents(
+          new StringSelectMenuBuilder()
+            .setCustomId('select_cargo')
+            .setPlaceholder('Selecione o cargo')
+            .addOptions(cargosOptions)
+        );
 
-  // Salva temporário
-  dadosTemp[interaction.user.id] = {
-    nome,
-    id,
-    telefone,
-    vulgo,
-    userId: interaction.user.id,
-    criadoEm: Date.now()
-  };
-  // ===== CARGOS =====
-  const cargosOptions = Object.entries(apelidosCargos).map(([id, nome]) => ({
-    label: nome,
-    value: id
-  }));
+        // ===== FAMÍLIAS =====
+        const familiasOptions = Object.entries(config.familias).map(([id, data]) => ({
+          label: data.nome,
+          value: id
+        })).slice(0, 25);
 
-  const selectCargo = new ActionRowBuilder().addComponents(
-    new StringSelectMenuBuilder()
-      .setCustomId('select_cargo')
-      .setPlaceholder('Selecione o cargo')
-      .addOptions(cargosOptions)
-  );
+        const selectFamilia = new ActionRowBuilder().addComponents(
+          new StringSelectMenuBuilder()
+            .setCustomId('select_familia')
+            .setPlaceholder('Selecione a família')
+            .addOptions(familiasOptions)
+        );
 
-  // ===== FAMÍLIAS =====
-  const familiasOptions = Object.entries(config.familias)
-    .map(([id, data]) => ({
-      label: data.nome,
-      value: id
-    }))
-    .slice(0, 25);
-
-  const selectFamilia = new ActionRowBuilder().addComponents(
-    new StringSelectMenuBuilder()
-      .setCustomId('registro_select_familia')
-      .setPlaceholder('Selecione a família')
-      .addOptions(familiasOptions)
-  );
-
-  // ✅ resposta final
-  return interaction.editReply({
-    content: 'Selecione cargo e família:',
-    components: [selectCargo, selectFamilia]
-  });
-}
+        return interaction.reply({
+          content: 'Selecione cargo e família:',
+          components: [selectCargo, selectFamilia],
+          flags: 64
+        });
+      }
 
       // ===== SELECT MENU =====
       if (interaction.isStringSelectMenu()) {
@@ -335,7 +270,7 @@ if (interaction.isModalSubmit() && interaction.customId === 'formulario_registro
           return interaction.reply({ content: `✅ Cargo selecionado!`, flags: 64 });
         }
 
-        if (interaction.customId === 'registro_select_familia') {
+        if (interaction.customId === 'select_familia') {
           dados.familia = interaction.values[0];
 
           const nomeCanal = `registro-${dados.nome.replace(/[^a-zA-Z0-9]/g, '').toLowerCase()}`;
@@ -387,7 +322,7 @@ if (interaction.isModalSubmit() && interaction.customId === 'formulario_registro
       // ===== APROVAR =====
       if (interaction.isButton() && interaction.customId === 'aprovar') {
         const canal = interaction.channel;
-        const dados = Object.values(dadosTemp).find(d => d.userId === canal.topic);
+        const dados = dadosTemp[canal.topic];
         if (!dados) return interaction.reply({ content: '❌ Dados expiraram.', flags: 64 });
 
         // Permissão para aprovar apenas cargos autorizados
@@ -433,9 +368,8 @@ if (interaction.isModalSubmit() && interaction.customId === 'formulario_registro
         // ===== Nickname com formato exato =====
         const apelido = apelidosCargos[dados.cargo] || 'Membro';
         const nickname = `[${apelido}] ${dados.id} | ${dados.vulgo}`;
-        if (membro.manageable) {
-          await membro.setNickname(nickname.slice(0,32)).catch(() => {});
-        }
+        await membro.setNickname(nickname.slice(0,32)).catch(() => {});
+
         await interaction.update({ content: '✅ Aprovado!', components: [] });
         delete dadosTemp[membro.id];
 
