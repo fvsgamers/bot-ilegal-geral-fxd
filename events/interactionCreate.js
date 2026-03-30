@@ -230,49 +230,61 @@ module.exports = (client) => {
       }
 
       // ===== MODAL SUBMIT =====
-      if (interaction.isModalSubmit() && interaction.customId === 'formulario_registro') {
-        const nome = interaction.fields.getTextInputValue('nome');
-        const id = interaction.fields.getTextInputValue('id');
-        const telefone = interaction.fields.getTextInputValue('telefone');
-        const vulgo = interaction.fields.getTextInputValue('vulgo');
+if (interaction.isModalSubmit() && interaction.customId === 'formulario_registro') {
 
-        if (!/^\d+$/.test(id)) return interaction.reply({ content: '❌ ID inválido!', flags: 64 });
+  // 🔥 RESPONDE IMEDIATAMENTE (evita interação falhou)
+  await interaction.deferReply({ ephemeral: true });
 
-        await interaction.guild.members.fetch();
-        dadosTemp[interaction.user.id] = { nome, id, telefone, vulgo };
+  const nome = interaction.fields.getTextInputValue('nome');
+  const id = interaction.fields.getTextInputValue('id');
+  const telefone = interaction.fields.getTextInputValue('telefone');
+  const vulgo = interaction.fields.getTextInputValue('vulgo');
 
-        // ===== CARGOS =====
-        const cargosOptions = Object.entries(apelidosCargos).map(([id, nome]) => ({
-          label: nome,
-          value: id
-        }));
+  // Validação
+  if (!/^\d+$/.test(id)) {
+    return interaction.editReply({ content: '❌ ID inválido!' });
+  }
 
-        const selectCargo = new ActionRowBuilder().addComponents(
-          new StringSelectMenuBuilder()
-            .setCustomId('select_cargo')
-            .setPlaceholder('Selecione o cargo')
-            .addOptions(cargosOptions)
-        );
+  // Pode demorar sem problema agora
+  await interaction.guild.members.fetch();
 
-        // ===== FAMÍLIAS =====
-        const familiasOptions = Object.entries(config.familias).map(([id, data]) => ({
-          label: data.nome,
-          value: id
-        })).slice(0, 25);
+  // Salva temporário
+  dadosTemp[interaction.user.id] = { nome, id, telefone, vulgo };
 
-        const selectFamilia = new ActionRowBuilder().addComponents(
-          new StringSelectMenuBuilder()
-            .setCustomId('registro_select_familia')
-            .setPlaceholder('Selecione a família')
-            .addOptions(familiasOptions)
-        );
+  // ===== CARGOS =====
+  const cargosOptions = Object.entries(apelidosCargos).map(([id, nome]) => ({
+    label: nome,
+    value: id
+  }));
 
-        return interaction.reply({
-          content: 'Selecione cargo e família:',
-          components: [selectCargo, selectFamilia],
-          flags: 64
-        });
-      }
+  const selectCargo = new ActionRowBuilder().addComponents(
+    new StringSelectMenuBuilder()
+      .setCustomId('select_cargo')
+      .setPlaceholder('Selecione o cargo')
+      .addOptions(cargosOptions)
+  );
+
+  // ===== FAMÍLIAS =====
+  const familiasOptions = Object.entries(config.familias)
+    .map(([id, data]) => ({
+      label: data.nome,
+      value: id
+    }))
+    .slice(0, 25);
+
+  const selectFamilia = new ActionRowBuilder().addComponents(
+    new StringSelectMenuBuilder()
+      .setCustomId('registro_select_familia')
+      .setPlaceholder('Selecione a família')
+      .addOptions(familiasOptions)
+  );
+
+  // ✅ resposta final
+  return interaction.editReply({
+    content: 'Selecione cargo e família:',
+    components: [selectCargo, selectFamilia]
+  });
+}
 
       // ===== SELECT MENU =====
       if (interaction.isStringSelectMenu()) {
