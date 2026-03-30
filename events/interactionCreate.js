@@ -249,7 +249,7 @@ if (interaction.isModalSubmit() && interaction.customId === 'formulario_registro
   await interaction.guild.members.fetch();
 
   // Salva temporário
-  dadosTemp[interaction.user.id] = { nome, id, telefone, vulgo };
+  dadosTemp[interaction.user.id] = { nome, id, telefone, vulgo, criadoEm: Date.now() };
 
   // ===== CARGOS =====
   const cargosOptions = Object.entries(apelidosCargos).map(([id, nome]) => ({
