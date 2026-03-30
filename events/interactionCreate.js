@@ -321,59 +321,96 @@ module.exports = (client) => {
 
       // ===== APROVAR =====
       if (interaction.isButton() && interaction.customId === 'aprovar') {
+      
         const canal = interaction.channel;
-        const dados = dadosTemp[canal.topic];
-        if (!dados) return interaction.reply({ content: '❌ Dados expiraram.', flags: 64 });
-
-        // Permissão para aprovar apenas cargos autorizados
-        const temPermissao = interaction.member.roles.cache.some(role => cargosAprovadores.includes(role.id));
-        if (!temPermissao) return interaction.reply({ content: '❌ Você não pode aprovar.', flags: 64 });
-
-        const membro = interaction.guild.members.cache.get(canal.topic);
+      
+        // 🔥 RESPONDE NA HORA (CRÍTICO)
+        await interaction.deferUpdate();
+      
+        const dados = Object.values(dadosTemp).find(d => d.userId === canal.topic);
+        if (!dados) return;
+      
+        // Permissão
+        const temPermissao = interaction.member.roles.cache.some(role =>
+          cargosAprovadores.includes(role.id)
+        );
+        if (!temPermissao) return;
+      
+        const membro = await interaction.guild.members.fetch(canal.topic).catch(() => null);
         if (!membro) return;
-
+      
         // ===== CARGOS =====
-        let cargosAdicionar = [ '1485779730845270036', dados.cargo ];
-
-        if (['1485783504250867803','1485783736606916733','1485784858591756420'].includes(dados.cargo)) {
+        let cargosAdicionar = ['1485779730845270036', dados.cargo];
+      
+        if ([
+          '1485783504250867803',
+          '1485783736606916733',
+          '1485784858591756420'
+        ].includes(dados.cargo)) {
           cargosAdicionar.push('1485779006325395606', '1485784175742287983');
         }
-
-        if (dados.familia) {
+      
+        if (dados.familia && config.familias[dados.familia]) {
           cargosAdicionar.push(dados.familia, config.familias[dados.familia].base);
         }
-
+      
+        // ===== REMOVER FAMÍLIAS ANTIGAS =====
         const todasFamilias = Object.keys(config.familias);
-        const remover = membro.roles.cache.filter(r => todasFamilias.includes(r.id)).map(r => r.id);
-        if (remover.length > 0) await membro.roles.remove(remover);
-
-        if (membro.roles.cache.has('1485783096250077246')) {
-          await membro.roles.remove('1485783096250077246');
+        const remover = membro.roles.cache
+          .filter(r => todasFamilias.includes(r.id))
+          .map(r => r.id);
+      
+        if (remover.length) await membro.roles.remove(remover);
+      
+        // Remove cargo antigo
+        if (membro.roles.cache.has(config.cargoRemover)) {
+          await membro.roles.remove(config.cargoRemover);
         }
-
-        // ===== REGISTRO CENTRAL =====
-        const canalRegistro = interaction.guild.channels.cache.get('1487297164811046912');
-
-        if (canalRegistro) {
-          const linha = `| ----------------------------------------------------------------|`;
-
-          const mensagem = `\n📜 **Batizado**\n\n👤 **Nome:** ${dados.nome}\n🕶️ **Vulgo:** ${dados.vulgo}\n🆔 **ID:** ${dados.id}\n📞 **Telefone:** ${dados.telefone}\n🏷️ **Cargo:** ${apelidosCargos[dados.cargo]}\n👨‍👩‍👧 **Família:** ${config.familias[dados.familia]?.nome || 'Família'}\n🧑‍💼 **Aprovado por:** ${interaction.member.displayName}\n\n${linha}\n`;
-
-          canalRegistro.send(mensagem);
-        }
-
+      
+        // ===== ADICIONAR =====
         const faltando = cargosAdicionar.filter(c => !membro.roles.cache.has(c));
-        if (faltando.length > 0) await membro.roles.add(faltando);
-
-        // ===== Nickname com formato exato =====
+        if (faltando.length) await membro.roles.add(faltando);
+      
+        // ===== NICKNAME =====
         const apelido = apelidosCargos[dados.cargo] || 'Membro';
         const nickname = `[${apelido}] ${dados.id} | ${dados.vulgo}`;
-        await membro.setNickname(nickname.slice(0,32)).catch(() => {});
-
-        await interaction.update({ content: '✅ Aprovado!', components: [] });
-        delete dadosTemp[membro.id];
-
-        setTimeout(() => canal.delete().catch(() => {}), 5000);
+      
+        if (membro.manageable) {
+          await membro.setNickname(nickname.slice(0, 32)).catch(() => {});
+        }
+      
+        // ===== LOG =====
+        const canalRegistro = interaction.guild.channels.cache.get('1487297164811046912');
+      
+        if (canalRegistro) {
+          const mensagem = `
+      📜 **Batizado**
+      
+      👤 **Nome:** ${dados.nome}
+      🕶️ **Vulgo:** ${dados.vulgo}
+      🆔 **ID:** ${dados.id}
+      📞 **Telefone:** ${dados.telefone}
+      🏷️ **Cargo:** ${apelidosCargos[dados.cargo]}
+      👨‍👩‍👧 **Família:** ${config.familias[dados.familia]?.nome || 'Família'}
+      🧑‍💼 **Aprovado por:** ${interaction.member.displayName}
+          `;
+      
+          canalRegistro.send(mensagem);
+        }
+      
+        // ===== EDITA MENSAGEM =====
+        await interaction.message.edit({
+          content: '✅ Aprovado!',
+          components: []
+        });
+      
+        // ===== LIMPA DADOS =====
+        delete dadosTemp[dados.userId];
+      
+        // ===== DELETA CANAL =====
+        setTimeout(() => {
+          canal.delete().catch(() => {});
+        }, 3000);
       }
 
       // ===== REPROVAR =====
