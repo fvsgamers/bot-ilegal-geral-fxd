@@ -225,8 +225,15 @@ module.exports = (client) => {
         if (!/^\d+$/.test(id)) return interaction.reply({ content: '❌ ID inválido!', flags: 64 });
 
         await interaction.guild.members.fetch();
-        dadosTemp[interaction.user.id] = { nome, id, telefone, vulgo };
-
+        //dadosTemp[interaction.user.id] = { nome, id, telefone, vulgo };
+        dadosTemp[interaction.user.id] = {
+          nome,
+          id,
+          telefone,
+          vulgo,
+          userId: interaction.user.id,
+          criadoEm: Date.now()
+        };
         // ===== CARGOS =====
         const cargosOptions = Object.entries(apelidosCargos).map(([id, nome]) => ({
           label: nome,
@@ -322,7 +329,7 @@ module.exports = (client) => {
       // ===== APROVAR =====
       if (interaction.isButton() && interaction.customId === 'aprovar') {
         const canal = interaction.channel;
-        const dados = dadosTemp[canal.topic];
+        const dados = Object.values(dadosTemp).find(d => d.userId === canal.topic);
         if (!dados) return interaction.reply({ content: '❌ Dados expiraram.', flags: 64 });
 
         // Permissão para aprovar apenas cargos autorizados
@@ -379,7 +386,7 @@ module.exports = (client) => {
       // ===== REPROVAR =====
       if (interaction.isButton() && interaction.customId === 'reprovar') {
         const canal = interaction.channel;
-        const dados = dadosTemp[canal.topic];
+        const dados = Object.values(dadosTemp).find(d => d.userId === canal.topic);
         delete dadosTemp[canal.topic];
 
         const temPermissao = interaction.member.roles.cache.some(role => cargosAprovadores.includes(role.id));
