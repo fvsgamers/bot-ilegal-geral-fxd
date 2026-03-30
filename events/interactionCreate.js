@@ -44,6 +44,21 @@ const apelidosCargos = {
   '1487292693250834562': 'Sub Gerente',
   '1485785011931316224': 'Membro'
 };
+//FUNCOES ATA //
+function gerarNumeroAta() {
+  if (!fs.existsSync(CAMINHO)) return 1;
+  const dados = JSON.parse(fs.readFileSync(CAMINHO));
+  return dados.length + 1;
+}
+
+function salvarAta(ata) {
+  let dados = [];
+  if (fs.existsSync(CAMINHO)) {
+    dados = JSON.parse(fs.readFileSync(CAMINHO));
+  }
+  dados.push(ata);
+  fs.writeFileSync(CAMINHO, JSON.stringify(dados, null, 2));
+}
 
 module.exports = (client) => {
   client.on('interactionCreate', async (interaction) => {
@@ -182,10 +197,17 @@ module.exports = (client) => {
       
         const { familiaId, responsavel, participantes } = dados;
       
-        const nomeFamilia = config.familias[familiaId].nome;
+        const familia = config.familias[familiaId];
+
+        if (!familia) {
+        return interaction.reply({ content: '❌ Família inválida.', ephemeral: true });
+        }
+
+        const nomeFamilia = familia.nome;
       
         const embed = new EmbedBuilder()
-          .setTitle(`📄 ATA`)
+        const numero = gerarNumeroAta();
+          .setTitle(`📄 ATA #${numero}`)
           .setColor('#2b2d31')
           .addFields(
             { name: '👨‍👩‍👧 Família', value: nomeFamilia },
@@ -225,7 +247,18 @@ module.exports = (client) => {
       
         await interaction.reply({ content: '✅ ATA criada!', ephemeral: true });
         await interaction.channel.send({ embeds: [embed] });
-      
+
+        salvarAta({
+          numero,
+          familia: nomeFamilia,
+          responsavel,
+          participantes,
+          interaction.fields.getTextInputValue('assuntos').slice(0, 1024),
+          decisoes: interaction.fields.getTextInputValue('decisoes'),
+          autor: interaction.user.id,
+          data: new Date()
+        });
+        
         delete dadosTemp[chave]; // limpa memória
       }
 
@@ -249,8 +282,14 @@ if (interaction.isModalSubmit() && interaction.customId === 'formulario_registro
   await interaction.guild.members.fetch();
 
   // Salva temporário
-  dadosTemp[interaction.user.id] = { nome, id, telefone, vulgo, criadoEm: Date.now() };
-
+  dadosTemp[interaction.user.id] = {
+    nome,
+    id,
+    telefone,
+    vulgo,
+    userId: interaction.user.id,
+    criadoEm: Date.now()
+  };
   // ===== CARGOS =====
   const cargosOptions = Object.entries(apelidosCargos).map(([id, nome]) => ({
     label: nome,
@@ -348,7 +387,7 @@ if (interaction.isModalSubmit() && interaction.customId === 'formulario_registro
       // ===== APROVAR =====
       if (interaction.isButton() && interaction.customId === 'aprovar') {
         const canal = interaction.channel;
-        const dados = dadosTemp[canal.topic];
+        const dados = Object.values(dadosTemp).find(d => d.userId === canal.topic);
         if (!dados) return interaction.reply({ content: '❌ Dados expiraram.', flags: 64 });
 
         // Permissão para aprovar apenas cargos autorizados
@@ -394,8 +433,9 @@ if (interaction.isModalSubmit() && interaction.customId === 'formulario_registro
         // ===== Nickname com formato exato =====
         const apelido = apelidosCargos[dados.cargo] || 'Membro';
         const nickname = `[${apelido}] ${dados.id} | ${dados.vulgo}`;
-        await membro.setNickname(nickname.slice(0,32)).catch(() => {});
-
+        if (membro.manageable) {
+          await membro.setNickname(nickname.slice(0,32)).catch(() => {});
+        }
         await interaction.update({ content: '✅ Aprovado!', components: [] });
         delete dadosTemp[membro.id];
 
